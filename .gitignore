@@ -1,0 +1,10 @@
+# Ignore node_modules
+node_modules/
+
+# Ignore .env files
+.env
+
+# Ignore other generated or runtime files
+*.log
+*.pid
+*.lock
