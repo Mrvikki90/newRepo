@@ -36,7 +36,7 @@ db.mongoose
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3001",
+    origin: "https://socket-chat-app-3v3p.onrender.com",
     methods: ["GET", "POST"],
   },
 });
@@ -65,7 +65,7 @@ io.on("connection", (socket) => {
   socket.on("sendMessage", ({ senderId, receiverId, text }) => {
     const user = getUsers(receiverId);
     if (user) {
-      io.to(user.sockeId).emit("getMessage", {
+      io.to(user.socketId).emit("getMessage", {
         senderId,
         text,
       });
