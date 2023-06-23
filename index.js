@@ -45,10 +45,10 @@ const io = new Server(server, {
 });
 
 let usersArray = [];
-const addUsers = (userId, sockeId) => {
+const addUsers = (userId, socketId) => {
   const user = usersArray.find((u) => u.userId === userId);
   if (!user) {
-    usersArray.push({ userId, sockeId });
+    usersArray.push({ userId, socketId });
   }
 };
 
