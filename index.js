@@ -46,9 +46,10 @@ const io = new Server(server, {
 
 let usersArray = [];
 const addUsers = (userId, sockeId) => {
-  !usersArray.some((user) => user.userId === userId) &&
+  const user = usersArray.find((u) => u.userId === userId);
+  if (!user) {
     usersArray.push({ userId, sockeId });
-  console.log("user added in user array :", usersArray);
+  }
 };
 
 const removeUsers = (sockeId) => {
