@@ -48,9 +48,11 @@ let usersArray = [];
 const addUsers = (userId, sockeId) => {
   !usersArray.some((user) => user.userId === userId) &&
     usersArray.push({ userId, sockeId });
+  console.log("user added in user array :", usersArray);
 };
 
 const removeUsers = (sockeId) => {
+  console.log("remove users :", sockeId);
   return usersArray.filter((user) => user.sockeId !== sockeId);
 };
 
@@ -66,7 +68,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("sendMessage", ({ senderId, receiverId, text }) => {
+    console.log("sendMessage", senderId, receiverId, text);
     const user = getUsers(receiverId);
+    console.log("user", user);
     if (user) {
       io.to(user.socketId).emit("getMessage", {
         senderId,
