@@ -36,7 +36,10 @@ db.mongoose
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://socket-chat-app-3v3p.onrender.com",
+    origin: [
+      "http://localhost:3001",
+      "https://socket-chat-app-3v3p.onrender.com",
+    ],
     methods: ["GET", "POST"],
   },
 });
