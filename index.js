@@ -77,6 +77,9 @@ io.on("connection", (socket) => {
         senderId,
         text,
       });
+      console.log("Message emitted successfully to socket ID:", user.socketId);
+    } else {
+      console.log("User not found with receiver ID:", receiverId);
     }
   });
 
