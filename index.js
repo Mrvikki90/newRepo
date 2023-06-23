@@ -49,6 +49,7 @@ const addUsers = (userId, socketId) => {
   const user = usersArray.find((u) => u.userId === userId);
   if (!user) {
     usersArray.push({ userId, socketId });
+    console.log("user added to socket", usersArray);
   }
 };
 
@@ -63,7 +64,10 @@ const getUsers = (receiverId) => {
 
 io.on("connection", (socket) => {
   socket.on("addUser", (userId) => {
-    console.log("user connected connected", userId);
+    console.log("user connected connected", {
+      userId: userId,
+      socket: socket.id,
+    });
     addUsers(userId, socket.id);
     io.emit("getUsers", usersArray);
   });
