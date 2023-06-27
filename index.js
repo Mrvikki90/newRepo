@@ -48,6 +48,7 @@ let usersArray = [];
 const addUsers = (userId, socketId) => {
   const user = usersArray.find((u) => u.userId === userId);
   if (!user) {
+    console.log(`useradded with userId ${userId} socketId ${socketId}`);
     usersArray.push({ userId, socketId });
     console.log("user added to socket", usersArray);
   }
