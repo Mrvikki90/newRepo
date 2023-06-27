@@ -54,9 +54,9 @@ const addUsers = (userId, socketId) => {
   }
 };
 
-const removeUsers = (sockeId) => {
-  console.log("remove users :", sockeId);
-  return usersArray.filter((user) => user.sockeId !== sockeId);
+const removeUsers = (socketId) => {
+  console.log("remove users :", socketId);
+  return usersArray.filter((user) => user.socketId !== socketId);
 };
 
 const getUsers = (receiverId) => {
