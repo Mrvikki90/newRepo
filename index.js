@@ -1,8 +1,7 @@
 const express = require("express");
 const { Server } = require("socket.io");
 const cors = require("cors");
-const http = require("http");
-var bodyParser = require("body-parser");
+const bodyParser = require("body-parser");
 const db = require("./database/database");
 require("dotenv").config();
 
@@ -14,11 +13,6 @@ app.use(cors());
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-require("./routes/routes")(app);
-require("./routes/conversation")(app);
-require("./routes/messages")(app);
-
-app.use("/images", express.static(__dirname + "/images"));
 
 db.mongoose
   .connect(db.url, {
@@ -33,7 +27,10 @@ db.mongoose
     process.exit();
   });
 
-const server = http.createServer(app);
+const server = app.listen(port, () =>
+  console.log(`Server is started at port ${port}`)
+);
+
 const io = new Server(server, {
   cors: {
     origin: [
@@ -45,38 +42,39 @@ const io = new Server(server, {
 });
 
 let usersArray = [];
-const addUsers = (userId, socketId) => {
+
+const addUser = (userId, socketId) => {
   const user = usersArray.find((u) => u.userId === userId);
   if (!user) {
-    console.log(`useradded with userId ${userId} socketId ${socketId}`);
+    console.log(`User added with userId ${userId} socketId ${socketId}`);
     usersArray.push({ userId, socketId });
-    console.log("user added to socket", usersArray);
+    console.log("User added to socket", usersArray);
   }
 };
 
-const removeUsers = (socketId) => {
-  console.log("remove users :", socketId);
-  return usersArray.filter((user) => user.socketId !== socketId);
+const removeUser = (socketId) => {
+  console.log("Remove user:", socketId);
+  usersArray = usersArray.filter((user) => user.socketId !== socketId);
 };
 
-const getUsers = (receiverId) => {
+const getUser = (receiverId) => {
   return usersArray.find((user) => user.userId === receiverId);
 };
 
 io.on("connection", (socket) => {
   socket.on("addUser", (userId) => {
-    console.log("user connected connected", {
+    console.log("User connected:", {
       userId: userId,
-      socket: socket.id,
+      socketId: socket.id,
     });
-    addUsers(userId, socket.id);
+    addUser(userId, socket.id);
     io.emit("getUsers", usersArray);
   });
 
   socket.on("sendMessage", ({ senderId, receiverId, text }) => {
-    console.log("sendMessage", senderId, receiverId, text);
-    const user = getUsers(receiverId);
-    console.log("user", user);
+    console.log("sendMessage:", senderId, receiverId, text);
+    const user = getUser(receiverId);
+    console.log("User:", user);
     if (user) {
       io.to(user.socketId).emit("getMessage", {
         senderId,
@@ -89,25 +87,12 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("user disconnected");
-    socket.disconnect();
-    removeUsers(socket.id);
+    console.log("User disconnected");
+    removeUser(socket.id);
     io.emit("getUsers", usersArray);
   });
-
-  // socket.on("joinRoom", (room) => {
-  //   console.log(room);
-  //   socket.join(room.room);
-  //   socket.broadcast.in(room.room).emit("welcome", { username: room.name });
-  // });
-  // socket.on("newMessage", ({ newMessage, room }) => {
-  //   console.log(newMessage, room);
-  //   io.in(room).emit("latestMessages", newMessage);
-  // });
 });
 
 app.get("/", (req, res) => {
-  res.send("chat started");
+  res.send("Chat started");
 });
-
-server.listen(port, () => console.log(`server is started at port ${port}`));
