@@ -14,6 +14,10 @@ app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+require("./routes/routes")(app);
+require("./routes/conversation")(app);
+require("./routes/messages")(app);
+
 db.mongoose
   .connect(db.url, {
     useNewUrlParser: true,
