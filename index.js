@@ -40,6 +40,8 @@ const io = new Server(server, {
     origin: [
       "http://localhost:3000",
       "https://socket-chat-app-3v3p.onrender.com",
+      "https://new-repo-client.vercel.app",
+      "https://new-repo-client-mrvikki90.vercel.app",
     ],
     methods: ["GET", "POST"],
   },
