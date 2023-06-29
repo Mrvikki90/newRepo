@@ -3,7 +3,7 @@ const User = db.user;
 const Bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const Busboy = require("busboy");
+const CryptoJS = require("crypto-js");
 
 // Create and Save a new Tutorial
 
@@ -99,6 +99,28 @@ exports.Login = async function (req, res) {
 
 exports.forgetPasswordMail = async (req, res) => {
   try {
+    const generateToken = () => {
+      const randomBytes = CryptoJS.lib.WordArray.random(32);
+      const token = CryptoJS.enc.Hex.stringify(randomBytes);
+      return token;
+    };
+
+    const resetToken = generateToken(); // Generate the reset token
+
+    const encryptData = (data) => {
+      const encryptedData = CryptoJS.AES.encrypt(
+        data,
+        "my_super_key"
+      ).toString();
+      return encryptedData;
+    };
+
+    const encryptedEmailData = encryptData(req.body.email + "|" + resetToken);
+
+    const resetLink = `https://new-repo-client.vercel.app/reset-password?data=${encodeURIComponent(
+      encryptedEmailData
+    )}`;
+
     const msg = {
       to: req.body.email, // Change to your recipient
       from: process.env.SG_EMAIL, // Change to your verified sender
@@ -109,7 +131,7 @@ exports.forgetPasswordMail = async (req, res) => {
           <p>Dear User,</p>
           <p>We received a request to reset your password. To proceed with the password reset, please click the button below:</p>
           <p style="text-align: center; margin-bottom: 20px;">
-            <a style="display: inline-block; background-color: #4CAF50; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px;" href="https://new-repo-client.vercel.app/reset-password">Reset Password</a>
+            <a style="display: inline-block; background-color: #4CAF50; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px;" href="${resetLink}">Reset Password</a>
           </p>
           <p>If you did not request a password reset, please ignore this email.</p>
           <div style="margin-top: 20px; text-align: center;">
@@ -136,4 +158,32 @@ exports.forgetPasswordMail = async (req, res) => {
   } catch (error) {
     return res.status(404).status(error.message);
   }
+};
+
+exports.ResetPassword = async (req, res) => {
+  const { email, newpass, confirmpass } = req.body;
+  const user = await User.findOne({
+    email: req.body.email,
+  });
+
+  console.log("user", user);
+
+  // //Check Newpassword and ConfirmPassword
+  if (req.body.newpass !== req.body.confirmpass) {
+    res.status(500).send({
+      message: "New password and Confirm Password do not match.",
+    });
+    return;
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    user._id,
+    {
+      $set: { password: await Bcrypt.hash(newpass, 8) },
+    },
+    { new: true }
+  );
+  return res.status(200).send({
+    message: "Password Updated.",
+  });
 };

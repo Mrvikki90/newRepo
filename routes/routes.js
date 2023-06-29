@@ -12,6 +12,7 @@ module.exports = (app) => {
   router.post("/login", tutorials.Login);
   router.get("/allUsers", tutorials.findAll);
   router.post("/forget-password-mail", tutorials.forgetPasswordMail);
+  router.post("/reset-password", tutorials.ResetPassword);
 
   app.use("/api", router);
 };
