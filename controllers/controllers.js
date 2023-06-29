@@ -6,6 +6,10 @@ require("dotenv").config();
 const Busboy = require("busboy");
 
 // Create and Save a new Tutorial
+
+const sgMail = require("@sendgrid/mail");
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
 exports.create = (req, res) => {
   if (!req.body.name) {
     res.status(400).send({ message: "Content can not be empty!" });
@@ -90,5 +94,46 @@ exports.Login = async function (req, res) {
     res.status(401).send({ message: "Invalid credentials" });
   } catch (err) {
     console.log(err);
+  }
+};
+
+exports.forgetPasswordMail = async (req, res) => {
+  try {
+    const msg = {
+      to: req.body.email, // Change to your recipient
+      from: process.env.SG_EMAIL, // Change to your verified sender
+      subject: "Forget Password Link",
+      html: `
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; border-radius: 5px; font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2 style="text-align: center;">Forgot Password</h2>
+          <p>Dear User,</p>
+          <p>We received a request to reset your password. To proceed with the password reset, please click the button below:</p>
+          <p style="text-align: center; margin-bottom: 20px;">
+            <a style="display: inline-block; background-color: #4CAF50; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px;" href="https://new-repo-client.vercel.app/reset-password">Reset Password</a>
+          </p>
+          <p>If you did not request a password reset, please ignore this email.</p>
+          <div style="margin-top: 20px; text-align: center;">
+            <p>Best regards,</p>
+            <p>Your Application Team</p>
+          </div>
+        </div>
+      `,
+    };
+    sgMail
+      .send(msg)
+      .then(() => {
+        return res.status(200).send({
+          code: "Success",
+          message: "EMAIL SENT SUCCESSFULLY  ",
+        });
+      })
+      .catch((error) => {
+        return res.status(400).send({
+          code: "Failed",
+          message: error,
+        });
+      });
+  } catch (error) {
+    return res.status(404).status(error.message);
   }
 };
