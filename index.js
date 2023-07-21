@@ -2,8 +2,11 @@ const express = require("express");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const db = require("./database/database");
 require("dotenv").config();
+const messagesController = require("./controllers/messages.controller");
+const db = require("./database/database");
+
+const Conversation = db.conversation;
 
 const port = process.env.PORT || 3000;
 
@@ -49,23 +52,33 @@ const io = new Server(server, {
 
 let usersArray = [];
 
-const addUser = (userId, socketId) => {
+const addUser = async (userId, socketId) => {
   const user = usersArray.find((u) => u.userId === userId);
   if (!user) {
-    console.log(`User added with userId ${userId} socketId ${socketId}`);
-    usersArray.push({ userId, socketId });
-    console.log("User added to socket", usersArray);
+    const offlineUserMessages = await messagesController.getOfflineMessages(
+      userId
+    );
+    if (!offlineUserMessages) {
+      console.log(`User added with userId ${userId} socketId ${socketId}`);
+      usersArray.push({ userId, socketId });
+    } else {
+      io.to(socketId).emit("retrieveOfflineMessages", offlineUserMessages);
+      // await messagesController.clearOfflineMessages(userId);
+      usersArray.push({ userId, socketId });
+    }
   }
 };
 
 const removeUser = (socketId) => {
-  console.log("Remove user:", socketId);
   usersArray = usersArray.filter((user) => user.socketId !== socketId);
 };
 
 const getUser = (receiverId) => {
   return usersArray.find((user) => user.userId === receiverId);
 };
+
+// Call the setIOInstance function and pass the io instance as an argument
+messagesController.setIOInstance(io, getUser);
 
 io.on("connection", (socket) => {
   socket.on("addUser", (userId) => {
@@ -74,23 +87,55 @@ io.on("connection", (socket) => {
       socketId: socket.id,
     });
     addUser(userId, socket.id);
-    io.emit("getUsers", usersArray);
   });
 
-  socket.on("sendMessage", ({ senderId, receiverId, text }) => {
-    console.log("sendMessage:", senderId, receiverId, text);
-    const user = getUser(receiverId);
-    console.log("User:", user);
-    if (user) {
-      io.to(user.socketId).emit("getMessage", {
-        senderId,
-        text,
-      });
-      console.log("Message emitted successfully to socket ID:", user.socketId);
-    } else {
-      console.log("User not found with receiver ID:", receiverId);
+  socket.on(
+    "sendMessage",
+    async ({ conversationId: chatId, senderId, receiverId, text }) => {
+      const user = getUser(receiverId);
+      console.log("User:", user);
+      if (user) {
+        io.to(user.socketId).emit("getMessage", {
+          senderId,
+          text,
+        });
+        // Emit the updated unread count for the conversation to the receiver
+        // const updatedConversation = await Conversation.findByIdAndUpdate(
+        //   chatId,
+        //   {
+        //     $push: { messages: { sender: senderId, text } },
+        //     $inc: { unreadMessages: 1 },
+        //   },
+        //   { new: true }
+        // );
+
+        // const conversation = await Conversation.findById(chatId);
+        // if (conversation && receiverId !== senderId) {
+        //   // If the conversation exists and the receiver is not the sender,
+        //   // increment the unreadMessages count for the conversation only if it's not already incremented.
+        //   if (!conversation.unreadMessages) {
+        //     conversation.unreadMessages = 1;
+        //   } else {
+        //     conversation.unreadMessages += 1;
+        //   }
+        //   await conversation.save();
+        // }
+
+        // // Emit the updated unread count for the conversation to the receiver
+        // io.to(user.socketId).emit("updateUnreadMessages", {
+        //   chatId,
+        //   unreadMessages: updatedConversation.unreadMessages,
+        // });
+      } else {
+        const offlineMessages = await messagesController.storeOfflineMessage(
+          chatId,
+          receiverId,
+          senderId,
+          text
+        );
+      }
     }
-  });
+  );
 
   socket.on("disconnect", () => {
     console.log("User disconnected");

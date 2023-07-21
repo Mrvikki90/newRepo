@@ -26,7 +26,6 @@ exports.create = (req, res) => {
       profileImg: req.body.filename,
     });
 
-    console.log("user", user);
     user
       .save(user)
       .then((data) => {
@@ -165,8 +164,6 @@ exports.ResetPassword = async (req, res) => {
   const user = await User.findOne({
     email: req.body.email,
   });
-
-  console.log("user", user);
 
   // //Check Newpassword and ConfirmPassword
   if (req.body.newpass !== req.body.confirmpass) {

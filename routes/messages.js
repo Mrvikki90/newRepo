@@ -7,5 +7,7 @@ module.exports = (app) => {
 
   router.get("/:conversationId", Message.getMessages);
 
+  router.put("/mark-message-as-read/:messageId", Message.markUnreadMessages);
+
   app.use("/messages", router);
 };

@@ -4,11 +4,18 @@ module.exports = (mongoose) => {
       conversationId: {
         type: String,
       },
+      userId: {
+        type: String,
+      },
       sender: {
         type: String,
       },
       text: {
         type: String,
+      },
+      offlineMessaes: {
+        type: Boolean,
+        default: false,
       },
     },
     { timestamps: true }
