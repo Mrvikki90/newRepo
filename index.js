@@ -20,6 +20,7 @@ app.use(bodyParser.json());
 require("./routes/routes")(app);
 require("./routes/conversation")(app);
 require("./routes/messages")(app);
+require("./routes/groups")(app);
 
 db.mongoose
   .connect(db.url, {
