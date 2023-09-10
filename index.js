@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 require("dotenv").config();
 const messagesController = require("./controllers/messages.controller");
 const db = require("./database/database");
+const isMessageSaved = db.message;
 
 const Conversation = db.conversation;
 
@@ -16,6 +17,8 @@ app.use(cors());
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+app.use("/images", express.static(__dirname + "/images"));
 
 require("./routes/routes")(app);
 require("./routes/conversation")(app);
@@ -52,6 +55,8 @@ const io = new Server(server, {
 });
 
 let usersArray = [];
+let onlineUsers = []; // Store online user IDs
+const socketToUser = new Map(); // Map to track socket-to-user mapping
 
 const addUser = async (userId, socketId) => {
   const user = usersArray.find((u) => u.userId === userId);
@@ -87,12 +92,26 @@ io.on("connection", (socket) => {
       userId: userId,
       socketId: socket.id,
     });
+    // Check if the user is already online
+    if (!onlineUsers.some((user) => user.id === userId)) {
+      onlineUsers.push({ id: userId });
+
+      // Update user status to "online" in the map
+      console.log("online users", onlineUsers);
+
+      // Emit the updated online users list to all clients
+      socket.broadcast.emit("updateOnlineUsers", onlineUsers);
+    }
+
     addUser(userId, socket.id);
+    // Map the socket to the user
+    socketToUser.set(socket.id, userId);
   });
 
   socket.on(
     "sendMessage",
     async ({ conversationId: chatId, senderId, receiverId, text }) => {
+      console.log("message ", senderId, receiverId, chatId, text);
       const user = getUser(receiverId);
       console.log("User:", user);
       if (user) {
@@ -100,33 +119,13 @@ io.on("connection", (socket) => {
           senderId,
           text,
         });
-        // Emit the updated unread count for the conversation to the receiver
-        // const updatedConversation = await Conversation.findByIdAndUpdate(
-        //   chatId,
-        //   {
-        //     $push: { messages: { sender: senderId, text } },
-        //     $inc: { unreadMessages: 1 },
-        //   },
-        //   { new: true }
-        // );
-
-        // const conversation = await Conversation.findById(chatId);
-        // if (conversation && receiverId !== senderId) {
-        //   // If the conversation exists and the receiver is not the sender,
-        //   // increment the unreadMessages count for the conversation only if it's not already incremented.
-        //   if (!conversation.unreadMessages) {
-        //     conversation.unreadMessages = 1;
-        //   } else {
-        //     conversation.unreadMessages += 1;
-        //   }
-        //   await conversation.save();
-        // }
-
-        // // Emit the updated unread count for the conversation to the receiver
-        // io.to(user.socketId).emit("updateUnreadMessages", {
-        //   chatId,
-        //   unreadMessages: updatedConversation.unreadMessages,
-        // });
+        const newMessage = new isMessageSaved({
+          conversationId: chatId,
+          userId: receiverId,
+          sender: senderId,
+          text: text,
+        });
+        const savedMessage = await newMessage.save();
       } else {
         const offlineMessages = await messagesController.storeOfflineMessage(
           chatId,
@@ -140,6 +139,15 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("User disconnected");
+    const userId = socketToUser.get(socket.id);
+
+    if (!Array.from(socketToUser.values()).includes(userId)) {
+      // Remove the user from onlineUsers only if they have no active sockets
+      onlineUsers = onlineUsers.filter((user) => user.id !== userId);
+      console.log("online users", onlineUsers);
+      // Emit the updated online users list to all clients
+      socket.broadcast.emit("updateOnlineUsers", onlineUsers);
+    }
     removeUser(socket.id);
     io.emit("getUsers", usersArray);
   });
