@@ -49,6 +49,7 @@ const io = new Server(server, {
       "https://socket-chat-app-3v3p.onrender.com",
       "https://new-repo-client.vercel.app",
       "https://new-repo-client-mrvikki90.vercel.app",
+      "https://sockets-client.vercel.app"
     ],
     methods: ["GET", "POST"],
   },
