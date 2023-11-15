@@ -5,6 +5,8 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 exports.getConversation = async (req, res) => {
+  console.log("getConversation api called");
+
   try {
     const receiverId = req.params.receiverId;
     if (receiverId) {
@@ -14,7 +16,6 @@ exports.getConversation = async (req, res) => {
         .populate([
           {
             path: "messages",
-            select: {},
           },
         ])
         .exec();

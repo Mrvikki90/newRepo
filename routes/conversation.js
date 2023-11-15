@@ -5,7 +5,7 @@ module.exports = (app) => {
 
   router.post("/", Conversation.createConversation);
 
-  router.get("/:userId/:receiverId", Conversation.getConversation);
+  router.get("/:userId", Conversation.getConversation);
 
   router.get(
     "/find/:firstUserId/:secondUserId",

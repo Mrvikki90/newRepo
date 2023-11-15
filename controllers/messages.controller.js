@@ -12,21 +12,20 @@ exports.setIOInstance = (io, getUser) => {
   getUserFunction = getUser;
 };
 
-exports.addMessages = async (chatId, senderId, text, res) => {
-  const newMessage = new Message({
-    conversationId: chatId,
-    senderId: senderId,
-    text: text,
-  });
-
-  // if (!req.body.userId) {
-  //   return;
-  // }
+exports.addMessages = async (req, res) => {
   try {
+    const newMessage = new Message({
+      conversationId: req.body.conversationId,
+      senderId: req.body.sender,
+      text: req.body.text,
+    });
+
     const savedMessage = await newMessage.save();
-    res.status(200).json(savedMessage);
+    return res
+      .status(200)
+      .json({ message: "message saved", data: savedMessage });
   } catch (err) {
-    console.log(err);
+    return res.status(500).json({ message: err.message });
   }
 };
 
@@ -35,6 +34,7 @@ exports.getMessages = async (req, res) => {
     const messages = await Message.find({
       conversationId: req.params.conversationId,
     });
+
     res.status(200).json(messages);
   } catch (err) {
     res.status(500).json(err);
@@ -64,17 +64,8 @@ exports.storeOfflineMessage = async (chatId, receiverId, senderId, message) => {
   });
 
   try {
-    const savedMessage = await newMessage.save();
-
-    // Update the conversation's messages array with the savedMessage._id
-    const updatedConversation = await Conversation.findOneAndUpdate(
-      { _id: chatId },
-      { $push: { messages: savedMessage._id }, $inc: { unreadMessages: 1 } },
-
-      { new: true } // Provide a callback function to handle the result
-    );
-
-    return savedMessage;
+    await newMessage.save();
+    return;
   } catch (err) {
     throw err;
   }
@@ -92,7 +83,6 @@ exports.clearOfflineMessages = async (userId) => {
 exports.markUnreadMessages = async (req, res) => {
   try {
     const chatId = req.params.messageId;
-
     // Find the conversation by chatId
     const conversation = await Conversation.findById(chatId);
 
@@ -100,10 +90,6 @@ exports.markUnreadMessages = async (req, res) => {
     if (!conversation) {
       return res.status(404).json({ error: "Conversation not found." });
     }
-
-    // Set the unreadMessages count to 0
-    conversation.unreadMessages = 0;
-    await conversation.save();
 
     // Update all messages in the conversation to mark them as read and set offlineMessages to false
     await Message.updateMany(

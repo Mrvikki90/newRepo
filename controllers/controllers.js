@@ -10,34 +10,42 @@ const CryptoJS = require("crypto-js");
 const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-exports.create = (req, res) => {
-  if (!req.body.name) {
-    res.status(400).send({ message: "Content can not be empty!" });
-    return;
-  }
+exports.create = async (req, res) => {
+  try {
+    if (!req.body.name) {
+      return res.status(400).send({ message: "name can not be empty!" });
+    }
 
-  Bcrypt.hash(req.body.password, 10, function (err, hash) {
-    const url = req.protocol + "://" + req.get("host");
-    // Create a Tutorial
+    console.log(req.body.filename);
+
+    const hashPassword = await new Promise((resolve, reject) => {
+      Bcrypt.hash(req.body.password, 10, (err, hash) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(hash);
+      });
+    });
+
     const user = new User({
       name: req.body.name,
       email: req.body.email,
-      password: hash,
-      profileImg: req.body.filename,
+      password: hashPassword,
+      profileImg: req.file.filename,
     });
 
-    user
-      .save(user)
-      .then((data) => {
-        res.send({ data: data, message: "user created successfully." });
-      })
-      .catch((err) => {
-        res.status(500).send({
-          message:
-            err.message || "Some error occurred while creating the user.",
-        });
-      });
-  });
+    const data = await user.save();
+
+    res.send({ data, message: "User added successfully", status: 200 });
+  } catch (error) {
+    if (error instanceof multer.MulterError) {
+      // Handle Multer errors
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).send("File size exceeds the limit");
+      }
+    }
+    res.status(500).send("Internal Server Error");
+  }
 };
 
 // Retrieve all Tutorials from the database.
@@ -86,13 +94,17 @@ exports.Login = async function (req, res) {
 
       user.token = token;
 
-      return res
-        .status(200)
-        .send({ token: token, user: user, message: "login succesfully" });
+      return res.status(200).send({
+        token: token,
+        user: user,
+        message: "login successfully",
+        status: 200,
+      });
+    } else {
+      return res.status(401).send({ message: "Invalid credentials" });
     }
-    res.status(401).send({ message: "Invalid credentials" });
   } catch (err) {
-    console.log(err);
+    return res.status(500).send({ message: "something went wrong" });
   }
 };
 

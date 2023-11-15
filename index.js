@@ -13,7 +13,11 @@ const port = process.env.PORT || 3000;
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -44,12 +48,7 @@ const server = app.listen(port, () =>
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "https://socket-chat-app-3v3p.onrender.com",
-      "https://new-repo-client.vercel.app",
-      "https://new-repo-client-mrvikki90.vercel.app",
-    ],
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
@@ -64,6 +63,7 @@ const addUser = async (userId, socketId) => {
     const offlineUserMessages = await messagesController.getOfflineMessages(
       userId
     );
+
     if (!offlineUserMessages) {
       console.log(`User added with userId ${userId} socketId ${socketId}`);
       usersArray.push({ userId, socketId });
@@ -83,10 +83,27 @@ const getUser = (receiverId) => {
   return usersArray.find((user) => user.userId === receiverId);
 };
 
+// Function to emit offline messages
+const emitOfflineMessages = async (userId) => {
+  console.log(`get user with userId  : ${userId}`);
+  const user = getUser(userId);
+  console.log("get user", user);
+  if (user) {
+    const offlineUserMessages = await messagesController.getOfflineMessages(
+      userId
+    );
+    console.log("Offline messages user", user);
+    if (offlineUserMessages) {
+      io.to(user.socketId).emit("retrieveOfflineMessages", offlineUserMessages);
+    }
+  }
+};
+
 // Call the setIOInstance function and pass the io instance as an argument
 messagesController.setIOInstance(io, getUser);
 
 io.on("connection", (socket) => {
+  console.log("socket connected");
   socket.on("addUser", (userId) => {
     console.log("User connected:", {
       userId: userId,
@@ -119,6 +136,7 @@ io.on("connection", (socket) => {
           senderId,
           text,
         });
+        console.log("getMessage event fired");
         const newMessage = new isMessageSaved({
           conversationId: chatId,
           userId: receiverId,
