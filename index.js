@@ -63,7 +63,6 @@ const addUser = async (userId, socketId) => {
     const offlineUserMessages = await messagesController.getOfflineMessages(
       userId
     );
-
     if (!offlineUserMessages) {
       console.log(`User added with userId ${userId} socketId ${socketId}`);
       usersArray.push({ userId, socketId });
