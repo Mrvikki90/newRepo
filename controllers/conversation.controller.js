@@ -1,24 +1,23 @@
 const db = require("../database/database");
 const Conversation = db.conversation;
 const ChatTracking = db.ChatTracking;
+const Message = db.message;
+const User = db.user;
+
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 exports.getConversation = async (req, res) => {
-  console.log("getConversation api called");
+  console.log("getConversation api called", req.params.id);
 
   try {
     const receiverId = req.params.receiverId;
     if (receiverId) {
       const conversation = await Conversation.find({
         members: { $in: [req.params.userId] },
-      })
-        .populate([
-          {
-            path: "messages",
-          },
-        ])
-        .exec();
+      });
+
+      // console.log("conversation", conversation);
 
       res.status(200).json(conversation);
     } else {
@@ -43,28 +42,62 @@ exports.getConversationOfTwoUserId = async (req, res) => {
   }
 };
 exports.createConversation = async (req, res) => {
-  if (!req.body.senderId && !req.body.receiverId) {
-    return res.status(400).json({ message: "both id required" });
-  }
-  // Check if a conversation already exists between the two users
-  const existingConversation = await Conversation.findOne({
-    members: { $all: [req.body.senderId, req.body.receiverId] },
-  });
-
-  if (existingConversation) {
-    // Conversation already exists, return the existing conversation
-    return res.status(200).json(existingConversation);
-  }
-
-  const newConversation = new Conversation({
-    members: [req.body.senderId, req.body.receiverId],
-  });
-
   try {
-    const savedConversation = await newConversation.save();
-    res.status(200).json(savedConversation);
+    if (!req.body.senderId && !req.body.receiverId) {
+      return res.status(400).json({ message: "both id required" });
+    }
+    // Check if a conversation already exists between the two users
+    const existingConversation = await Conversation.findOne({
+      members: { $all: [req.body.senderId, req.body.receiverId] },
+    });
+
+    if (existingConversation) {
+      // Conversation already exists, return the existing conversation
+      //fetch user
+      let filteredMembers = existingConversation.members.filter(
+        (item) => item != req.body.senderId
+      );
+
+      let receiverUserId =
+        filteredMembers.length > 0 ? filteredMembers[0] : null;
+
+      const receiverUser = await User.findById(receiverUserId);
+
+      res.status(200).json({
+        status: 1,
+        data: {
+          conversation: existingConversation,
+          user: receiverUser,
+        },
+      });
+    } else {
+      const newConversation = new Conversation({
+        members: [req.body.senderId, req.body.receiverId],
+      });
+
+      const savedConversation = await newConversation.save();
+
+      //fetch user
+
+      let filteredMembers = savedConversation.members.filter(
+        (item) => item != req.body.senderId
+      );
+
+      let receiverUserId =
+        filteredMembers.length > 0 ? filteredMembers[0] : null;
+
+      const receiverUser = await User.findById(receiverUserId);
+
+      res.status(200).json({
+        status: 0,
+        data: {
+          conversation: savedConversation,
+          user: receiverUser,
+        },
+      });
+    }
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ status: 500, data: err });
   }
 };
 
@@ -125,21 +158,21 @@ exports.deleteConversation = async (req, res) => {
       return res.status(404).json({ message: "Conversation not found" });
     }
 
-    // Ensure that the requesting user is a member of the conversation
-    // Assuming you pass the user ID in the request body as `req.body.userId`
-    if (!conversation.members.includes(req.body.userId)) {
-      return res.status(403).json({
-        message: "You are not authorized to delete this conversation",
-      });
-    }
-
     // If the user is authorized, delete the conversation
     await conversation.remove();
-    res.status(200).json({ message: "Conversation deleted successfully" });
-  } catch (err) {
-    console.log(err);
+
+    // Delete all messages associated with the conversation from the messages table
+    await Message.deleteMany({ conversationId: conversationId });
+
     res
-      .status(500)
-      .json({ message: "An error occurred while deleting the conversation" });
+      .status(200)
+      .json({ message: "Conversation deleted successfully", status: 1 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "An error occurred while deleting the conversation",
+      error: err.message,
+      status: 0,
+    });
   }
 };
